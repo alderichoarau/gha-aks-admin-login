@@ -1,0 +1,43 @@
+name: "Azure + AKS admin login"
+description: "OIDC sign-in to Azure, then fetches admin kubeconfig for the given cluster -- trainer-only tooling (bootstrap/cert-manager), never the app repos' own deploy workflows which use a namespace-scoped identity instead."
+
+inputs:
+  client-id:
+    description: "Azure AD app/managed identity client ID"
+    required: true
+  tenant-id:
+    description: "Azure AD tenant ID"
+    required: true
+  subscription-id:
+    description: "Azure subscription ID"
+    required: true
+  resource-group:
+    description: "Resource group holding the AKS cluster"
+    required: true
+  cluster-name:
+    description: "AKS cluster name"
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: alderichoarau/gha-azure-login@v1
+      with:
+        client-id: ${{ inputs.client-id }}
+        tenant-id: ${{ inputs.tenant-id }}
+        subscription-id: ${{ inputs.subscription-id }}
+
+    # --kubelogin-version pinned: unpinned, this calls GitHub's unauthenticated
+    # releases/latest API (60 req/hour per IP, shared across every GitHub-hosted
+    # runner) and intermittently fails with "403 rate limit exceeded" -- hit live
+    # on the app repos' aks-deploy.yml.
+    - shell: bash
+      run: az aks install-cli --kubelogin-version v0.2.19
+
+    - shell: bash
+      run: |
+        az aks get-credentials \
+          --resource-group "${{ inputs.resource-group }}" \
+          --name "${{ inputs.cluster-name }}" \
+          --admin \
+          --overwrite-existing

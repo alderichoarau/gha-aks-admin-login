@@ -1,0 +1,35 @@
+# -----------------------------------------------------------------------------------------------
+# Creates the next immutable version tag (vN+1) at the ref this run was dispatched from. Bare vN
+# tags (not moved, never reused) so native Dependabot github-actions updates can detect and
+# propose bumps in consuming repos.
+# -----------------------------------------------------------------------------------------------
+name: "Tag a new version"
+run-name: "Tag a new version"
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # need every existing tag to compute the next version
+
+      - name: "Create the next version tag"
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          LAST=$(git tag -l "v*" | sed -E "s/^v//" | sort -n | tail -1)
+          NEXT=$(( ${LAST:-0} + 1 ))
+          TAG="v${NEXT}"
+          git tag "$TAG"
+          git push origin "$TAG"
+
+          echo "## New tag" >> "$GITHUB_STEP_SUMMARY"
+          echo "- \`$TAG\` → \`$(git rev-parse --short HEAD)\`" >> "$GITHUB_STEP_SUMMARY"
