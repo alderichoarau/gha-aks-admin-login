@@ -26,6 +26,19 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           LAST=$(git tag -l "v*" | sed -E "s/^v//" | sort -n | tail -1)
+
+          # Refuse to tag if HEAD is the exact same commit the last tag already points at --
+          # this would create a second tag with no real change behind it (a real incident: this
+          # happened here, `vN` and `vN+1` ended up pointing at the same commit).
+          if [ -n "$LAST" ]; then
+            LAST_TAG_SHA=$(git rev-list -n 1 "v$LAST")
+            HEAD_SHA=$(git rev-parse HEAD)
+            if [ "$LAST_TAG_SHA" = "$HEAD_SHA" ]; then
+              echo "::error::HEAD ($HEAD_SHA) is the same commit as v$LAST -- nothing changed since the last tag, refusing to create a duplicate."
+              exit 1
+            fi
+          fi
+
           NEXT=$(( ${LAST:-0} + 1 ))
           TAG="v${NEXT}"
           git tag "$TAG"
