@@ -21,7 +21,7 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: alderichoarau/gha-azure-login@v1
+    - uses: alderichoarau/gha-azure-login@v3
       with:
         client-id: ${{ inputs.client-id }}
         tenant-id: ${{ inputs.tenant-id }}
